@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Bell, FileText, UserCheck, User, Menu, X } from "lucide-react";
 import useManageStore from "./Store/useManageStore";// Adjust path as needed
 // Import components
-import Attendance from "./Students/Attendance";
+
 import Assignments from "./Students/Assignments";
 import Announcement from "./Students/Announcement";
 
@@ -71,7 +71,7 @@ const Sidebar = ({
   const menuItems = [
     { id: "announcements", icon: Bell, label: "Announcements" },
     { id: "assignments", icon: FileText, label: "Assignments" },
-    { id: "attendance", icon: UserCheck, label: "Attendance" },
+
   ];
   return (
     <div
@@ -141,10 +141,7 @@ const HomeContents = () => {
         return <Announcement />;
       case "assignments":
         return <Assignments />;
-      case "attendance":
-        return <Attendance />;
-      default:
-        return <Announcement />;
+
     }
   };
   return (
