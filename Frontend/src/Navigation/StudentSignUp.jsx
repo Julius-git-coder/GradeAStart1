@@ -1,4 +1,3 @@
-// components/StudentSignUp.jsx (no changes needed, routing already uses useNavigate correctly)
 import React, { useState } from "react";
 import {
   Code,
@@ -15,6 +14,9 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { signUpStudent } from "../../Service/FirebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../Store/useManageStore";
 
 const StudentSignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -33,6 +35,7 @@ const StudentSignUp = () => {
   const [success, setSuccess] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifyingTeam, setIsVerifyingTeam] = useState(false);
+  const [teamVerified, setTeamVerified] = useState(null);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -42,9 +45,12 @@ const StudentSignUp = () => {
       [name]: type === "checkbox" ? checked : value,
     }));
     setError("");
+
+    if (name === "teamId") {
+      setTeamVerified(null);
+    }
   };
 
-  // Verify Team ID when user types or clicks verify button
   const handleVerifyTeamId = async () => {
     if (!formData.teamId) {
       setError("Please enter a Team ID");
@@ -58,12 +64,33 @@ const StudentSignUp = () => {
 
     setIsVerifyingTeam(true);
     setError("");
+    setTeamVerified(null);
 
-    // Simulate verification success
-    setTimeout(() => {
-      setSuccess("✓ Team ID verified! You can proceed with signup.");
+    try {
+      const teamRef = doc(db, "teams", formData.teamId);
+      const teamDoc = await getDoc(teamRef);
+
+      if (!teamDoc.exists()) {
+        setError("Team ID not found. Please check with your administrator.");
+        setTeamVerified(false);
+      } else {
+        const teamData = teamDoc.data();
+        if (!teamData.isActive) {
+          setError(
+            "This team is no longer active. Contact your administrator."
+          );
+          setTeamVerified(false);
+        } else {
+          setSuccess(`✓ Team ID verified! Admin: ${teamData.adminName}`);
+          setTeamVerified(true);
+        }
+      }
+    } catch (error) {
+      setError("Error verifying Team ID");
+      console.error(error);
+    } finally {
       setIsVerifyingTeam(false);
-    }, 1000);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -87,7 +114,6 @@ const StudentSignUp = () => {
       return;
     }
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError("Please enter a valid email address");
@@ -95,44 +121,53 @@ const StudentSignUp = () => {
       return;
     }
 
-    // Team ID validation
     if (formData.teamId.length < 6) {
       setError("Team ID must be at least 6 characters long");
       setIsLoading(false);
       return;
     }
 
-    // Password validation
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters long");
       setIsLoading(false);
       return;
     }
 
-    // Password match validation
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
       return;
     }
 
-    // Terms agreement validation
     if (!formData.agreeToTerms) {
       setError("You must agree to the terms and conditions");
       setIsLoading(false);
       return;
     }
 
-    // Simulate successful signup
-    setSuccess(
-      "Account created successfully! Redirecting to your dashboard..."
-    );
+    try {
+      await signUpStudent({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        phone: formData.phone,
+        studentId: formData.studentId,
+        teamId: formData.teamId,
+      });
 
-    // Wait a bit to show success message, then redirect
-    setTimeout(() => {
-      navigate("/dashboard");
-    }, 2000);
-    setIsLoading(false);
+      setSuccess(
+        "Account created successfully! Redirecting to your dashboard..."
+      );
+
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
+    } catch (error) {
+      console.error("Signup error:", error);
+      setError(error.message || "Failed to create account. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (success && success.includes("Redirecting")) {
@@ -193,7 +228,6 @@ const StudentSignUp = () => {
         {/* Right Side - Sign Up Form */}
         <div className="w-full">
           <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700 shadow-2xl">
-            {/* Mobile Logo */}
             <div className="lg:hidden flex items-center justify-center space-x-3 mb-8">
               <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center">
                 <Code className="w-7 h-7 text-gray-900" />
@@ -227,7 +261,6 @@ const StudentSignUp = () => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Full Name Field */}
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
                   Full Name *
@@ -248,7 +281,6 @@ const StudentSignUp = () => {
                 </div>
               </div>
 
-              {/* Email Field */}
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
                   Email Address *
@@ -269,7 +301,6 @@ const StudentSignUp = () => {
                 </div>
               </div>
 
-              {/* Phone and Student ID Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-gray-400 text-sm font-medium mb-2">
@@ -311,7 +342,6 @@ const StudentSignUp = () => {
                 </div>
               </div>
 
-              {/* Team ID Field with Verify Button */}
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
                   Team ID (from your admin) *
@@ -326,7 +356,13 @@ const StudentSignUp = () => {
                       name="teamId"
                       value={formData.teamId}
                       onChange={handleChange}
-                      className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg pl-12 pr-4 py-3 outline-none focus:border-yellow-500 transition-colors"
+                      className={`w-full bg-gray-900 text-white border rounded-lg pl-12 pr-4 py-3 outline-none transition-colors ${
+                        teamVerified === true
+                          ? "border-green-500"
+                          : teamVerified === false
+                          ? "border-red-500"
+                          : "border-gray-700 focus:border-yellow-500"
+                      }`}
                       placeholder="Enter Team ID (e.g., TEAM001)"
                       required
                     />
@@ -345,7 +381,6 @@ const StudentSignUp = () => {
                 </p>
               </div>
 
-              {/* Password Fields */}
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
                   Password *
@@ -408,7 +443,6 @@ const StudentSignUp = () => {
                 </div>
               </div>
 
-              {/* Terms Agreement */}
               <div className="flex items-start space-x-2">
                 <input
                   type="checkbox"
@@ -436,7 +470,6 @@ const StudentSignUp = () => {
                 </label>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -458,7 +491,6 @@ const StudentSignUp = () => {
               </button>
             </form>
 
-            {/* Divider */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-700"></div>
@@ -468,7 +500,6 @@ const StudentSignUp = () => {
               </div>
             </div>
 
-            {/* Sign In Link */}
             <div className="text-center">
               <p className="text-gray-400">
                 Already have an account?{" "}
@@ -482,7 +513,6 @@ const StudentSignUp = () => {
             </div>
           </div>
 
-          {/* Footer */}
           <div className="text-center mt-6">
             <p className="text-gray-500 text-sm">
               © 2025 GradeA+. All rights reserved.

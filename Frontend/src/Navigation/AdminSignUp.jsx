@@ -1,4 +1,3 @@
-// components/AdminSignUp.jsx (no changes needed, routing already uses useNavigate correctly)
 import React, { useState } from "react";
 import {
   Code,
@@ -15,6 +14,9 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { signUpAdmin } from "../../Service/FirebaseConfig";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../Store/useManageStore";
 
 const AdminSignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +25,6 @@ const AdminSignUp = () => {
     fullName: "",
     email: "",
     phone: "",
-    adminCode: "",
     department: "",
     teamId: "",
     password: "",
@@ -45,13 +46,11 @@ const AdminSignUp = () => {
     }));
     setError("");
 
-    // Reset Team ID availability when user changes it
     if (name === "teamId") {
       setTeamIdAvailable(null);
     }
   };
 
-  // Check if Team ID is available
   const handleCheckTeamId = async () => {
     if (!formData.teamId) {
       setError("Please enter a Team ID");
@@ -67,12 +66,23 @@ const AdminSignUp = () => {
     setError("");
     setTeamIdAvailable(null);
 
-    // Simulate availability check success
-    setTimeout(() => {
-      setSuccess("✓ Team ID is available!");
-      setTeamIdAvailable(true);
+    try {
+      const teamRef = doc(db, "teams", formData.teamId);
+      const teamDoc = await getDoc(teamRef);
+
+      if (teamDoc.exists()) {
+        setError("Team ID already exists. Please choose a different one.");
+        setTeamIdAvailable(false);
+      } else {
+        setSuccess("✓ Team ID is available!");
+        setTeamIdAvailable(true);
+      }
+    } catch (error) {
+      setError("Error checking Team ID availability");
+      console.error(error);
+    } finally {
       setIsCheckingTeamId(false);
-    }, 1000);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -86,7 +96,6 @@ const AdminSignUp = () => {
       !formData.fullName ||
       !formData.email ||
       !formData.phone ||
-      !formData.adminCode ||
       !formData.department ||
       !formData.teamId ||
       !formData.password ||
@@ -97,7 +106,6 @@ const AdminSignUp = () => {
       return;
     }
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError("Please enter a valid email address");
@@ -105,51 +113,53 @@ const AdminSignUp = () => {
       return;
     }
 
-    // Admin code validation (example: must be 8 characters)
-    if (formData.adminCode.length < 8) {
-      setError("Invalid admin authorization code");
-      setIsLoading(false);
-      return;
-    }
-
-    // Team ID validation (unique, min 6 chars)
     if (formData.teamId.length < 6) {
       setError("Team ID must be at least 6 characters long");
       setIsLoading(false);
       return;
     }
 
-    // Password validation
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters long");
       setIsLoading(false);
       return;
     }
 
-    // Password match validation
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       setIsLoading(false);
       return;
     }
 
-    // Terms agreement validation
     if (!formData.agreeToTerms) {
       setError("You must agree to the terms and conditions");
       setIsLoading(false);
       return;
     }
 
-    // Simulate successful admin signup
-    setSuccess(
-      "Admin account created successfully! Redirecting to your dashboard..."
-    );
+    try {
+      await signUpAdmin({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        phone: formData.phone,
+        department: formData.department,
+        teamId: formData.teamId,
+      });
 
-    // Wait a bit to show success message, then redirect
-    setTimeout(() => {
-      navigate("/Administrator");
-    }, 2000);
-    setIsLoading(false);
+      setSuccess(
+        "Admin account created successfully! Redirecting to your dashboard..."
+      );
+
+      setTimeout(() => {
+        navigate("/Administrator");
+      }, 2000);
+    } catch (error) {
+      console.error("Signup error:", error);
+      setError(error.message || "Failed to create account. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (success && success.includes("Redirecting")) {
@@ -188,18 +198,6 @@ const AdminSignUp = () => {
           <div className="space-y-6">
             <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
               <div className="w-12 h-12 bg-yellow-500 bg-opacity-20 rounded-xl flex items-center justify-center mb-4">
-                <Shield className="w-6 h-6 text-yellow-500" />
-              </div>
-              <h3 className="text-white text-xl font-semibold mb-2">
-                Create Your Team
-              </h3>
-              <p className="text-gray-400">
-                Set up your unique Team ID and start managing your students with
-                powerful admin tools.
-              </p>
-            </div>
-            <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
-              <div className="w-12 h-12 bg-yellow-500 bg-opacity-20 rounded-xl flex items-center justify-center mb-4">
                 <Code className="w-6 h-6 text-yellow-500" />
               </div>
               <h3 className="text-white text-xl font-semibold mb-2">
@@ -228,7 +226,6 @@ const AdminSignUp = () => {
         {/* Right Side - Sign Up Form */}
         <div className="w-full">
           <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700 shadow-2xl">
-            {/* Mobile Logo */}
             <div className="lg:hidden flex items-center justify-center space-x-3 mb-8">
               <div className="w-12 h-12 bg-yellow-500 rounded-xl flex items-center justify-center">
                 <Code className="w-7 h-7 text-gray-900" />
@@ -246,7 +243,7 @@ const AdminSignUp = () => {
                 </h2>
               </div>
               <p className="text-gray-400">
-                Requires authorization code from super admin
+                Set up your team and manage students
               </p>
             </div>
 
@@ -265,7 +262,6 @@ const AdminSignUp = () => {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Full Name Field */}
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
                   Full Name *
@@ -286,7 +282,6 @@ const AdminSignUp = () => {
                 </div>
               </div>
 
-              {/* Email Field */}
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
                   Email Address *
@@ -307,7 +302,6 @@ const AdminSignUp = () => {
                 </div>
               </div>
 
-              {/* Phone and Department Row */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-gray-400 text-sm font-medium mb-2">
@@ -350,31 +344,6 @@ const AdminSignUp = () => {
                 </div>
               </div>
 
-              {/* Admin Authorization Code */}
-              <div>
-                <label className="block text-gray-400 text-sm font-medium mb-2">
-                  Admin Authorization Code *
-                </label>
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                    <Key className="w-5 h-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    name="adminCode"
-                    value={formData.adminCode}
-                    onChange={handleChange}
-                    className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg pl-12 pr-4 py-3 outline-none focus:border-yellow-500 transition-colors"
-                    placeholder="Enter authorization code"
-                    required
-                  />
-                </div>
-                <p className="text-gray-500 text-xs mt-1">
-                  Contact super admin to obtain authorization code
-                </p>
-              </div>
-
-              {/* Team ID with Check Availability Button */}
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
                   Team ID (Unique - Share with your students) *
@@ -414,7 +383,6 @@ const AdminSignUp = () => {
                 </p>
               </div>
 
-              {/* Password Field */}
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
                   Password *
@@ -446,7 +414,6 @@ const AdminSignUp = () => {
                 </div>
               </div>
 
-              {/* Confirm Password Field */}
               <div>
                 <label className="block text-gray-400 text-sm font-medium mb-2">
                   Confirm Password *
@@ -478,7 +445,6 @@ const AdminSignUp = () => {
                 </div>
               </div>
 
-              {/* Terms Agreement */}
               <div className="flex items-start space-x-2">
                 <input
                   type="checkbox"
@@ -502,13 +468,10 @@ const AdminSignUp = () => {
                     className="text-yellow-500 hover:text-yellow-400"
                   >
                     Privacy Policy
-                  </button>{" "}
-                  and confirm that I have proper authorization to create an
-                  admin account
+                  </button>
                 </label>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isLoading}
@@ -530,7 +493,6 @@ const AdminSignUp = () => {
               </button>
             </form>
 
-            {/* Divider */}
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-gray-700"></div>
@@ -540,7 +502,6 @@ const AdminSignUp = () => {
               </div>
             </div>
 
-            {/* Sign In Link */}
             <div className="text-center">
               <p className="text-gray-400">
                 Already have an account?{" "}
@@ -553,7 +514,6 @@ const AdminSignUp = () => {
               </p>
             </div>
 
-            {/* Security Notice */}
             <div className="mt-6 pt-6 border-t border-gray-700">
               <div className="bg-yellow-500 bg-opacity-10 border border-yellow-500 rounded-lg p-4 flex items-start space-x-3">
                 <Shield className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
@@ -571,7 +531,6 @@ const AdminSignUp = () => {
             </div>
           </div>
 
-          {/* Footer */}
           <div className="text-center mt-6">
             <p className="text-gray-500 text-sm">
               © 2025 GradeA+. All rights reserved.
@@ -584,3 +543,4 @@ const AdminSignUp = () => {
 };
 
 export default AdminSignUp;
+         

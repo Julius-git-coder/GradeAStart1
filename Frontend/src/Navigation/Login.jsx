@@ -1,4 +1,3 @@
-// components/Login.jsx (no changes needed, routing already uses useNavigate correctly)
 import React, { useState } from "react";
 import {
   Code,
@@ -10,6 +9,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { signIn } from "../../Service/FirebaseConfig";
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -49,12 +49,37 @@ const Login = () => {
 
     setIsLoading(true);
 
-    // Simulate successful login
-    setTimeout(() => {
-      // Redirect to dashboard (assuming student role for simplicity)
-      navigate("/dashboard");
+    try {
+      const result = await signIn(formData.email, formData.password);
+
+      if (result.success) {
+        // Redirect based on user role
+        if (result.userData.role === "admin") {
+          navigate("/Administrator");
+        } else if (result.userData.role === "student") {
+          navigate("/dashboard");
+        } else {
+          setError("Invalid user role");
+        }
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+
+      // Handle specific Firebase errors
+      if (error.code === "auth/user-not-found") {
+        setError("No account found with this email");
+      } else if (error.code === "auth/wrong-password") {
+        setError("Incorrect password");
+      } else if (error.code === "auth/invalid-credential") {
+        setError("Invalid email or password");
+      } else if (error.code === "auth/too-many-requests") {
+        setError("Too many failed attempts. Please try again later");
+      } else {
+        setError(error.message || "Failed to sign in. Please try again.");
+      }
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -95,7 +120,7 @@ const Login = () => {
               </h3>
               <p className="text-gray-400">
                 Receive announcements and collaborate with classmates through
-                Campus Connect.
+                the platform.
               </p>
             </div>
           </div>
