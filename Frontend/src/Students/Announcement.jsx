@@ -52,26 +52,26 @@ const Announcement = () => {
   const getPriorityColor = (priority) => {
     switch (priority) {
       case "high":
-        return "bg-red-500 bg-opacity-20 border-red-500 text-red-500";
+        return "bg-red-500 bg-opacity-20 border-red-500 text-white";
       case "medium":
-        return "bg-yellow-500 bg-opacity-20 border-yellow-500 text-yellow-500";
+        return "bg-yellow-500 bg-opacity-20 border-yellow-500 text-white";
       case "low":
-        return "bg-blue-500 bg-opacity-20 border-blue-500 text-blue-500";
+        return "bg-blue-500 bg-opacity-20 border-blue-500 text-white";
       default:
-        return "bg-gray-500 bg-opacity-20 border-gray-500 text-gray-500";
+        return "bg-gray-500 bg-opacity-20 border-gray-500 text-white";
     }
   };
 
   const getPriorityIcon = (priority) => {
     switch (priority) {
       case "high":
-        return <AlertCircle className="w-5 h-5" />;
+        return <AlertCircle className="w-5 h-5 text-white" />;
       case "medium":
-        return <Bell className="w-5 h-5" />;
+        return <Bell className="w-5 h-5 text-white" />;
       case "low":
-        return <Clock className="w-5 h-5" />;
+        return <Clock className="w-5 h-5 text-white" />;
       default:
-        return <Bell className="w-5 h-5" />;
+        return <Bell className="w-5 h-5 text-white" />;
     }
   };
 
@@ -119,8 +119,8 @@ const Announcement = () => {
         </div>
         <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4">
           <div className="flex items-center space-x-3 mb-3">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <p className="text-red-500 text-sm">{error}</p>
+            <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />
+            <p className="text-white text-sm">{error}</p>
           </div>
           <button
             onClick={() => window.location.reload()}
@@ -144,12 +144,12 @@ const Announcement = () => {
       </div>
 
       {/* Real-time Indicator */}
-      <div className="bg-green-500 bg-opacity-10 border border-green-500 rounded-lg p-4 flex items-center space-x-3">
+      <div className="bg-green-500 bg-opacity-10 text-white border border-green-500 rounded-lg p-4 flex items-center space-x-3">
         <div className="relative flex h-3 w-3">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
         </div>
-        <p className="text-green-500 text-sm font-medium">
+        <p className="text-white text-sm font-medium">
           Real-time updates enabled - New announcements appear automatically
         </p>
       </div>
@@ -170,7 +170,7 @@ const Announcement = () => {
           {announcements.map((announcement, index) => (
             <div
               key={announcement.id}
-              className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-yellow-500 transition-all duration-300 fade-in"
+              className="bg-gray-800 rounded-xl p-6 border text-white border-gray-700 hover:border-yellow-500 transition-all duration-300 fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <div className="flex items-start justify-between mb-4">
@@ -211,9 +211,9 @@ const Announcement = () => {
               </div>
 
               {announcement.priority === "high" && (
-                <div className="mt-4 bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-3 flex items-center space-x-2">
-                  <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                  <p className="text-red-500 text-sm font-medium">
+                <div className="mt-4 bg-red-500 bg-opacity-10 border text-white border-red-500 rounded-lg p-3 flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 text-white flex-shrink-0" />
+                  <p className="text-white text-sm font-medium">
                     This is a high priority announcement - Please take note!
                   </p>
                 </div>

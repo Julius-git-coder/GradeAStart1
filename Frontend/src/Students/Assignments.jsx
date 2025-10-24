@@ -88,7 +88,7 @@ const Assignments = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 text-white border-yellow-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -102,7 +102,7 @@ const Assignments = () => {
         </div>
         <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4">
           <div className="flex items-center space-x-3 mb-3">
-            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <AlertCircle className="w-5 h-5 text-white flex-shrink-0" />
             <p className="text-red-500 text-sm">{error}</p>
           </div>
           <button
@@ -130,7 +130,7 @@ const Assignments = () => {
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
         </div>
-        <p className="text-green-500 text-sm font-medium">
+        <p className="text-white text-sm font-medium">
           Real-time updates enabled - New assignments appear automatically
         </p>
       </div>
@@ -145,7 +145,7 @@ const Assignments = () => {
                 {assignments.length}
               </p>
             </div>
-            <FileText className="w-12 h-12 text-yellow-500 opacity-20" />
+            <FileText className="w-12 h-12 text-white opacity-20" />
           </div>
         </div>
 
@@ -153,7 +153,7 @@ const Assignments = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Active</p>
-              <p className="text-white text-3xl font-bold mt-1">
+              <p className="text-green-500 text-3xl font-bold mt-1">
                 {activeAssignments.length}
               </p>
             </div>
@@ -165,7 +165,7 @@ const Assignments = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-gray-400 text-sm">Overdue</p>
-              <p className="text-white text-3xl font-bold mt-1">
+              <p className="text-red-500 text-3xl font-bold mt-1">
                 {overdueAssignments.length}
               </p>
             </div>
@@ -192,7 +192,7 @@ const Assignments = () => {
                 >
                   <div className="flex items-start space-x-4">
                     <div className="w-12 h-12 bg-green-500 bg-opacity-20 rounded-full flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-6 h-6 text-green-500" />
+                      <FileText className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-2 flex-wrap">
@@ -200,12 +200,12 @@ const Assignments = () => {
                           {assignment.title}
                         </h3>
                         {daysUntil <= 2 && daysUntil >= 0 && (
-                          <span className="bg-yellow-500 bg-opacity-20 text-yellow-500 text-xs font-semibold px-3 py-1 rounded-full">
+                          <span className="bg-yellow-500 bg-opacity-20 text-white text-xs font-semibold px-3 py-1 rounded-full">
                             Due Soon
                           </span>
                         )}
                         {daysUntil === 0 && (
-                          <span className="bg-orange-500 bg-opacity-20 text-orange-500 text-xs font-semibold px-3 py-1 rounded-full">
+                          <span className="bg-orange-500 bg-opacity-20 text-white text-xs font-semibold px-3 py-1 rounded-full">
                             Due Today
                           </span>
                         )}
@@ -230,7 +230,7 @@ const Assignments = () => {
                               : "text-green-500"
                           }`}
                         >
-                          <Clock className="w-4 h-4" />
+                          <Clock className="w-4 h-4 text-white" />
                           <span>
                             Due:{" "}
                             {new Date(assignment.dueDate).toLocaleDateString()}
@@ -262,7 +262,7 @@ const Assignments = () => {
 
       {/* Overdue Assignments */}
       {overdueAssignments.length > 0 && (
-        <div className="bg-gray-800 rounded-lg border border-red-500">
+        <div className="bg-gray-800 rounded-lg border text-white border-red-500">
           <div className="p-6 border-b border-red-500 bg-red-500 bg-opacity-10">
             <div className="flex items-center space-x-3">
               <AlertCircle className="w-6 h-6 text-red-500" />
@@ -281,14 +281,14 @@ const Assignments = () => {
               >
                 <div className="flex items-start space-x-4">
                   <div className="w-12 h-12 bg-red-500 bg-opacity-20 rounded-full flex items-center justify-center flex-shrink-0">
-                    <FileText className="w-6 h-6 text-red-500" />
+                    <FileText className="w-6 h-6 " />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center space-x-3 mb-2 flex-wrap">
                       <h3 className="text-white text-lg font-semibold">
                         {assignment.title}
                       </h3>
-                      <span className="bg-red-500 bg-opacity-20 text-red-500 text-xs font-semibold px-3 py-1 rounded-full">
+                      <span className="bg-red-500 bg-opacity-20  text-xs font-semibold px-3 py-1 rounded-full">
                         Overdue
                       </span>
                     </div>

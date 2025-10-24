@@ -1,5 +1,3 @@
-
-
 import React, { useState } from "react";
 import {
   Bell,
@@ -30,9 +28,7 @@ const NotificationModal = ({ isOpen, onClose }) => {
           <X className="w-5 h-5" />
         </button>
       </div>
-      <div className="p-4 text-gray-400 text-center">
-        No new notifications
-      </div>
+      <div className="p-4 text-gray-400 text-center">No new notifications</div>
     </div>
   );
 };
