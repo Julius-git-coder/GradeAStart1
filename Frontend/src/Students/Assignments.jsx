@@ -1,8 +1,12 @@
-
-
 import React, { useState, useEffect } from "react";
 import { FileText, Calendar, User, Clock, AlertCircle } from "lucide-react";
-import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  orderBy,
+} from "firebase/firestore";
 import { db } from "../../Service/FirebaseConfig";
 import { useAuth } from "../Store/useManageStore";
 
@@ -10,10 +14,12 @@ const Assignments = () => {
   const { userData } = useAuth();
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (!userData?.teamId) {
       setLoading(false);
+      setError("No team ID found. Please log in again.");
       return;
     }
 
@@ -34,9 +40,13 @@ const Assignments = () => {
         });
         setAssignments(assignmentList);
         setLoading(false);
+        setError(null); // Clear errors on success
       },
-      (error) => {
-        console.error("Error loading assignments:", error);
+      (subscriptionError) => {
+        console.error("Error loading assignments:", subscriptionError);
+        setError(
+          "Failed to load assignments. This may be due to a missing Firestore index—check the console for details and create it in the Firebase Console."
+        );
         setLoading(false);
       }
     );
@@ -63,6 +73,26 @@ const Assignments = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-white text-3xl font-bold">Assignments</h1>
+          <p className="text-gray-400 mt-1">View and manage your assignments</p>
+        </div>
+        <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4">
+          <p className="text-red-500 text-sm">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="mt-2 bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -164,7 +194,9 @@ const Assignments = () => {
                           <span>
                             Assigned:{" "}
                             {assignment.createdAt?.toDate
-                              ? new Date(assignment.createdAt.toDate()).toLocaleDateString()
+                              ? new Date(
+                                  assignment.createdAt.toDate()
+                                ).toLocaleDateString()
                               : "Recently"}
                           </span>
                         </div>
@@ -227,7 +259,9 @@ const Assignments = () => {
                         <span>
                           Assigned:{" "}
                           {assignment.createdAt?.toDate
-                            ? new Date(assignment.createdAt.toDate()).toLocaleDateString()
+                            ? new Date(
+                                assignment.createdAt.toDate()
+                              ).toLocaleDateString()
                             : "Recently"}
                         </span>
                       </div>

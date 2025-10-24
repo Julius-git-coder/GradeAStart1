@@ -7,6 +7,7 @@ const Announcement = () => {
   const { userData } = useAuth();
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (userData?.teamId) {
@@ -16,10 +17,22 @@ const Announcement = () => {
         (updatedAnnouncements) => {
           setAnnouncements(updatedAnnouncements);
           setLoading(false);
+          setError(null); // Clear errors on success
+        },
+        (subscriptionError) => {
+          console.error(
+            "Error in announcements subscription:",
+            subscriptionError
+          );
+          setError("Failed to load announcements. Please refresh the page.");
+          setLoading(false);
         }
       );
 
       return () => unsubscribe();
+    } else {
+      setLoading(false);
+      setError("No team ID found. Please log in again.");
     }
   }, [userData]);
 
@@ -53,6 +66,20 @@ const Announcement = () => {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4">
+        <p className="text-red-500 text-sm">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 bg-red-500 text-white px-4 py-2 rounded"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -94,7 +121,7 @@ const Announcement = () => {
           {announcements.map((announcement, index) => (
             <div
               key={announcement.id}
-              className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-yellow-500 transition-all duration-300 animate-fadeIn"
+              className="bg-gray-800 rounded-xl p-6 border border-gray-700 hover:border-yellow-500 transition-all duration-300 fade-in"
               style={{ animationDelay: `${index * 50}ms` }}
             >
               <div className="flex items-start justify-between mb-4">
@@ -170,21 +197,24 @@ const Announcement = () => {
         </div>
       )}
 
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(10px);
+      {/* Global Styles (replaces <style jsx>) */}
+      <style>
+        {`
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
           }
-          to {
-            opacity: 1;
-            transform: translateY(0);
+          .fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
           }
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out forwards;
-        }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 };
