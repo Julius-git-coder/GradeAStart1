@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useEffect } from "react";
 import {
   Plus,
@@ -16,13 +13,13 @@ import {
 import { createAssignment } from "../../Service/FirebaseConfig";
 import { db } from "../../Service/FirebaseConfig";
 import { useAuth } from "../Store/useManageStore";
-import { 
-  collection, 
-  query, 
-  where, 
-  onSnapshot, 
-  deleteDoc, 
-  doc 
+import {
+  collection,
+  query,
+  where,
+  onSnapshot,
+  deleteDoc,
+  doc,
 } from "firebase/firestore";
 
 const AdminAssignments = () => {
@@ -112,7 +109,7 @@ const AdminAssignments = () => {
     const selectedDate = new Date(formData.dueDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     if (selectedDate < today) {
       setError("Due date cannot be in the past");
       return;
@@ -129,7 +126,7 @@ const AdminAssignments = () => {
 
       setSuccess("Assignment created and sent to all students!");
       setFormData({ title: "", description: "", dueDate: "" });
-      
+
       setTimeout(() => {
         setShowCreateModal(false);
         setSuccess("");
