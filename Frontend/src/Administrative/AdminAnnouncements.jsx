@@ -5,20 +5,22 @@ import {
   AlertCircle,
   CheckCircle,
   Trash2,
-  Edit,
   X,
+  Users,
+  Send,
 } from "lucide-react";
 import {
   createAnnouncement,
   subscribeToAnnouncements,
   deleteAnnouncement,
-  updateAnnouncement,
+  getStudentsByTeam,
 } from "../../Service/FirebaseConfig";
 import { useAuth } from "../Store/useManageStore.jsx";
 
 const AdminAnnouncements = () => {
   const { userData } = useAuth();
   const [announcements, setAnnouncements] = useState([]);
+  const [students, setStudents] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -29,19 +31,46 @@ const AdminAnnouncements = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  // Load students count
+  useEffect(() => {
+    const loadStudents = async () => {
+      if (userData?.teamId) {
+        try {
+          const studentList = await getStudentsByTeam(userData.teamId);
+          setStudents(studentList);
+        } catch (error) {
+          console.error("Error loading students:", error);
+        }
+      }
+    };
+    loadStudents();
+  }, [userData?.teamId]);
+
+  // Subscribe to announcements
   useEffect(() => {
     if (userData?.teamId) {
-      // Subscribe to real-time updates
+      console.log(
+        "Admin subscribing to announcements for team:",
+        userData.teamId
+      );
+
       const unsubscribe = subscribeToAnnouncements(
         userData.teamId,
         (updatedAnnouncements) => {
+          console.log(
+            "Admin received announcements:",
+            updatedAnnouncements.length
+          );
           setAnnouncements(updatedAnnouncements);
+        },
+        (error) => {
+          console.error("Error in admin announcements subscription:", error);
         }
       );
 
       return () => unsubscribe();
     }
-  }, [userData]);
+  }, [userData?.teamId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -62,16 +91,27 @@ const AdminAnnouncements = () => {
       return;
     }
 
+    if (!userData?.teamId) {
+      setError("Team ID not found. Please try logging in again.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await createAnnouncement({
+      const result = await createAnnouncement({
         title: formData.title,
         content: formData.content,
         priority: formData.priority,
       });
 
-      setSuccess("Announcement created successfully!");
+      console.log("Announcement created successfully:", result.id);
+
+      setSuccess(
+        `Announcement sent successfully to ${students.length} student${
+          students.length !== 1 ? "s" : ""
+        }!`
+      );
       setFormData({ title: "", content: "", priority: "medium" });
 
       setTimeout(() => {
@@ -80,7 +120,9 @@ const AdminAnnouncements = () => {
       }, 2000);
     } catch (error) {
       console.error("Error creating announcement:", error);
-      setError(error.message || "Failed to create announcement");
+      setError(
+        error.message || "Failed to create announcement. Please try again."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -93,9 +135,12 @@ const AdminAnnouncements = () => {
 
     try {
       await deleteAnnouncement(announcementId);
+      setSuccess("Announcement deleted successfully");
+      setTimeout(() => setSuccess(""), 3000);
     } catch (error) {
       console.error("Error deleting announcement:", error);
-      alert("Failed to delete announcement");
+      setError("Failed to delete announcement");
+      setTimeout(() => setError(""), 3000);
     }
   };
 
@@ -129,6 +174,72 @@ const AdminAnnouncements = () => {
           <Plus className="w-5 h-5" />
           <span>New Announcement</span>
         </button>
+      </div>
+
+      {/* Stats Card */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-400 text-sm">Total Announcements</p>
+              <p className="text-white text-3xl font-bold mt-1">
+                {announcements.length}
+              </p>
+            </div>
+            <Bell className="w-12 h-12 text-yellow-500 opacity-20" />
+          </div>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-400 text-sm">Students in Team</p>
+              <p className="text-white text-3xl font-bold mt-1">
+                {students.length}
+              </p>
+            </div>
+            <Users className="w-12 h-12 text-blue-500 opacity-20" />
+          </div>
+        </div>
+
+        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-400 text-sm">Your Team ID</p>
+              <p className="text-white text-lg font-bold mt-1 font-mono">
+                {userData?.teamId}
+              </p>
+            </div>
+            <Send className="w-12 h-12 text-green-500 opacity-20" />
+          </div>
+        </div>
+      </div>
+
+      {/* Success/Error Messages */}
+      {success && (
+        <div className="bg-green-500 bg-opacity-10 border border-green-500 rounded-lg p-4 flex items-center space-x-3">
+          <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+          <p className="text-white text-sm">{success}</p>
+        </div>
+      )}
+
+      {error && !isModalOpen && (
+        <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4 flex items-center space-x-3">
+          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+          <p className="text-white text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Real-time Indicator */}
+      <div className="bg-green-500 bg-opacity-10 border border-green-500 rounded-lg p-4 flex items-center space-x-3">
+        <div className="relative flex h-3 w-3">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+        </div>
+        <p className="text-green-500 text-sm font-medium">
+          Real-time updates enabled - Announcements sync automatically to all{" "}
+          {students.length} student{students.length !== 1 ? "s" : ""}
+        </p>
       </div>
 
       {/* Announcements List */}
@@ -170,29 +281,42 @@ const AdminAnnouncements = () => {
                       {announcement.priority.toUpperCase()}
                     </span>
                   </div>
-                  <p className="text-gray-400 text-sm">
-                    {announcement.createdAt &&
-                      new Date(
-                        announcement.createdAt.toDate()
-                      ).toLocaleString()}
-                  </p>
+                  <div className="flex items-center space-x-2">
+                    <p className="text-gray-400 text-sm">
+                      {announcement.createdAt &&
+                        new Date(
+                          announcement.createdAt.toDate()
+                        ).toLocaleString()}
+                    </p>
+                    <span className="text-gray-600">•</span>
+                    <p className="text-gray-500 text-sm">
+                      Sent to {students.length} student
+                      {students.length !== 1 ? "s" : ""}
+                    </p>
+                  </div>
                 </div>
                 <button
                   onClick={() => handleDelete(announcement.id)}
-                  className="text-red-500 hover:text-red-400 transition-colors p-2"
+                  className="text-red-500 hover:text-red-400 transition-colors p-2 hover:bg-red-500 hover:bg-opacity-10 rounded-lg"
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>
               </div>
 
-              <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">
-                {announcement.content}
-              </p>
+              <div className="bg-gray-900 rounded-lg p-4 border border-gray-700">
+                <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">
+                  {announcement.content}
+                </p>
+              </div>
 
               <div className="mt-4 pt-4 border-t border-gray-700 flex items-center justify-between">
                 <div className="flex items-center space-x-2 text-sm text-gray-500">
-                  <Bell className="w-4 h-4" />
-                  <span>Sent to all students in your team</span>
+                  <Users className="w-4 h-4" />
+                  <span>Visible to all team members</span>
+                </div>
+                <div className="flex items-center space-x-2 text-sm">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  <span className="text-green-500">Live</span>
                 </div>
               </div>
             </div>
@@ -205,11 +329,21 @@ const AdminAnnouncements = () => {
         <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-gray-800 rounded-2xl p-8 border border-gray-700 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-white text-2xl font-bold">
-                Create New Announcement
-              </h2>
+              <div>
+                <h2 className="text-white text-2xl font-bold">
+                  Create New Announcement
+                </h2>
+                <p className="text-gray-400 mt-1">
+                  This will be sent to {students.length} student
+                  {students.length !== 1 ? "s" : ""} in real-time
+                </p>
+              </div>
               <button
-                onClick={() => setIsModalOpen(false)}
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setError("");
+                  setFormData({ title: "", content: "", priority: "medium" });
+                }}
                 className="text-gray-400 hover:text-white transition-colors"
               >
                 <X className="w-6 h-6" />
@@ -243,6 +377,7 @@ const AdminAnnouncements = () => {
                   className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-3 outline-none focus:border-yellow-500 transition-colors"
                   placeholder="Enter announcement title"
                   required
+                  disabled={isSubmitting}
                 />
               </div>
 
@@ -256,10 +391,11 @@ const AdminAnnouncements = () => {
                   onChange={handleChange}
                   className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-3 outline-none focus:border-yellow-500 transition-colors"
                   required
+                  disabled={isSubmitting}
                 >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
+                  <option value="low">Low - General information</option>
+                  <option value="medium">Medium - Important update</option>
+                  <option value="high">High - Urgent attention required</option>
                 </select>
               </div>
 
@@ -275,32 +411,57 @@ const AdminAnnouncements = () => {
                   className="w-full bg-gray-900 text-white border border-gray-700 rounded-lg px-4 py-3 outline-none focus:border-yellow-500 transition-colors resize-none"
                   placeholder="Enter announcement details..."
                   required
+                  disabled={isSubmitting}
                 />
               </div>
 
               <div className="bg-blue-500 bg-opacity-10 border border-blue-500 rounded-lg p-4">
-                <p className="text-blue-500 text-sm">
-                  <strong>Note:</strong> This announcement will be sent to all
-                  students in your team in real-time.
-                </p>
+                <div className="flex items-start space-x-3">
+                  <Send className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-blue-500 text-sm font-semibold mb-1">
+                      Real-time Delivery
+                    </p>
+                    <p className="text-blue-400 text-xs">
+                      This announcement will appear instantly on all student
+                      dashboards. Students currently viewing the announcements
+                      page will see it without refreshing.
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex space-x-4">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg font-semibold transition-colors"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setError("");
+                    setFormData({ title: "", content: "", priority: "medium" });
+                  }}
+                  disabled={isSubmitting}
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`flex-1 bg-yellow-500 hover:bg-yellow-600 text-gray-900 py-3 rounded-lg font-semibold transition-colors ${
+                  className={`flex-1 bg-yellow-500 hover:bg-yellow-600 text-gray-900 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${
                     isSubmitting ? "opacity-70 cursor-not-allowed" : ""
                   }`}
                 >
-                  {isSubmitting ? "Creating..." : "Create Announcement"}
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+                      <span>Sending...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" />
+                      <span>Create & Send</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
