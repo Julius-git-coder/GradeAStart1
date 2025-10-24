@@ -10,31 +10,44 @@ const Announcement = () => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (userData?.teamId) {
-      // Subscribe to real-time updates
-      const unsubscribe = subscribeToAnnouncements(
-        userData.teamId,
-        (updatedAnnouncements) => {
-          setAnnouncements(updatedAnnouncements);
-          setLoading(false);
-          setError(null); // Clear errors on success
-        },
-        (subscriptionError) => {
-          console.error(
-            "Error in announcements subscription:",
-            subscriptionError
-          );
-          setError("Failed to load announcements. Please refresh the page.");
-          setLoading(false);
-        }
-      );
-
-      return () => unsubscribe();
-    } else {
+    if (!userData?.teamId) {
       setLoading(false);
       setError("No team ID found. Please log in again.");
+      return;
     }
-  }, [userData]);
+
+    console.log(
+      "Student component subscribing to announcements for team:",
+      userData.teamId
+    );
+
+    // Subscribe to real-time updates
+    const unsubscribe = subscribeToAnnouncements(
+      userData.teamId,
+      (updatedAnnouncements) => {
+        console.log(
+          "Student received announcements update:",
+          updatedAnnouncements.length
+        );
+        setAnnouncements(updatedAnnouncements);
+        setLoading(false);
+        setError(null);
+      },
+      (subscriptionError) => {
+        console.error(
+          "Error in announcements subscription:",
+          subscriptionError
+        );
+        setError("Failed to load announcements. Please refresh the page.");
+        setLoading(false);
+      }
+    );
+
+    return () => {
+      console.log("Student component unsubscribing from announcements");
+      unsubscribe();
+    };
+  }, [userData?.teamId]);
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -62,6 +75,31 @@ const Announcement = () => {
     }
   };
 
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "Just now";
+
+    try {
+      let date;
+      if (timestamp.toDate) {
+        date = timestamp.toDate();
+      } else if (timestamp instanceof Date) {
+        date = timestamp;
+      } else if (typeof timestamp === "string") {
+        date = new Date(timestamp);
+      } else {
+        return "Recently";
+      }
+
+      return date.toLocaleString("en-US", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "Recently";
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -72,14 +110,25 @@ const Announcement = () => {
 
   if (error) {
     return (
-      <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4">
-        <p className="text-red-500 text-sm">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="mt-2 bg-red-500 text-white px-4 py-2 rounded"
-        >
-          Retry
-        </button>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-white text-3xl font-bold">Announcements</h1>
+          <p className="text-gray-400 mt-1">
+            Stay updated with the latest announcements from your instructor
+          </p>
+        </div>
+        <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4">
+          <div className="flex items-center space-x-3 mb-3">
+            <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
+            <p className="text-red-500 text-sm">{error}</p>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
@@ -139,13 +188,9 @@ const Announcement = () => {
                         {announcement.title}
                       </h3>
                       <p className="text-gray-400 text-sm">
-                        {announcement.createdAt &&
-                          new Date(
-                            announcement.createdAt.toDate()
-                          ).toLocaleString("en-US", {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          })}
+                        {formatDate(
+                          announcement.createdAt || announcement.clientCreatedAt
+                        )}
                       </p>
                     </div>
                   </div>
@@ -173,6 +218,14 @@ const Announcement = () => {
                   </p>
                 </div>
               )}
+
+              {announcement.adminName && (
+                <div className="mt-3 pt-3 border-t border-gray-700">
+                  <p className="text-gray-500 text-sm">
+                    Posted by {announcement.adminName}
+                  </p>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -197,7 +250,6 @@ const Announcement = () => {
         </div>
       )}
 
-      {/* Global Styles (replaces <style jsx>) */}
       <style>
         {`
           @keyframes fadeIn {
