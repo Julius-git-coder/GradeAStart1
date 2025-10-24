@@ -1,6 +1,10 @@
+
+
+
 import React, { useState, useEffect } from "react";
-import { Users, Mail, Phone, UserCheck, Search, Filter } from "lucide-react";
-import { getStudentsByTeam } from "../../Service/FirebaseConfig";
+import { Users, Mail, Phone, UserCheck, Search } from "lucide-react";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "../../Service/FirebaseConfig";
 import { useAuth } from "../Store/useManageStore";
 
 const AdminUsers = () => {
@@ -11,38 +15,51 @@ const AdminUsers = () => {
   const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    if (userData?.teamId) {
-      loadStudents();
+    if (!userData?.teamId) {
+      setLoading(false);
+      return;
     }
-  }, [userData]);
+
+    // Real-time listener for students
+    const studentsQuery = query(
+      collection(db, "users"),
+      where("teamId", "==", userData.teamId),
+      where("role", "==", "student")
+    );
+
+    const unsubscribe = onSnapshot(
+      studentsQuery,
+      (snapshot) => {
+        const studentList = [];
+        snapshot.forEach((doc) => {
+          studentList.push({ id: doc.id, ...doc.data() });
+        });
+        setStudents(studentList);
+        setFilteredStudents(studentList);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error loading students:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [userData?.teamId]);
 
   useEffect(() => {
-    // Filter students based on search term
     if (searchTerm) {
       const filtered = students.filter(
         (student) =>
-          student.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          student.studentId.toLowerCase().includes(searchTerm.toLowerCase())
+          student.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          student.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          student.studentId?.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredStudents(filtered);
     } else {
       setFilteredStudents(students);
     }
   }, [searchTerm, students]);
-
-  const loadStudents = async () => {
-    try {
-      setLoading(true);
-      const studentList = await getStudentsByTeam(userData.teamId);
-      setStudents(studentList);
-      setFilteredStudents(studentList);
-    } catch (error) {
-      console.error("Error loading students:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -73,17 +90,31 @@ const AdminUsers = () => {
         </div>
       </div>
 
+      {/* Real-time Indicator */}
+      <div className="bg-green-500 bg-opacity-10 border border-green-500 rounded-lg p-4 flex items-center space-x-3">
+        <div className="relative flex h-3 w-3">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+        </div>
+        <p className="text-green-500 text-sm font-medium">
+          Real-time updates enabled - Student list updates automatically
+        </p>
+      </div>
+
       {/* Team Info Card */}
       <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-gray-400 text-sm">Your Team ID</p>
-            <p className="text-white text-xl font-bold mt-1">
+            <p className="text-white text-xl font-bold mt-1 font-mono">
               {userData?.teamId}
             </p>
           </div>
           <button
-            onClick={() => navigator.clipboard.writeText(userData?.teamId)}
+            onClick={() => {
+              navigator.clipboard.writeText(userData?.teamId);
+              alert("Team ID copied to clipboard!");
+            }}
             className="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-4 py-2 rounded-lg font-semibold transition-colors"
           >
             Copy Team ID
@@ -135,7 +166,9 @@ const AdminUsers = () => {
                   <UserCheck className="w-6 h-6 text-yellow-500" />
                 </div>
                 <span className="text-xs text-gray-500">
-                  {new Date(student.createdAt?.toDate()).toLocaleDateString()}
+                  {student.createdAt?.toDate
+                    ? new Date(student.createdAt.toDate()).toLocaleDateString()
+                    : "Recently joined"}
                 </span>
               </div>
 
@@ -161,9 +194,12 @@ const AdminUsers = () => {
               </div>
 
               <div className="mt-4 pt-4 border-t border-gray-700">
-                <button className="w-full bg-gray-700 hover:bg-gray-600 text-white py-2 rounded-lg transition-colors text-sm font-medium">
-                  View Details
-                </button>
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>Team: {student.teamId}</span>
+                  <span className="bg-green-500 bg-opacity-20 text-green-500 px-2 py-1 rounded">
+                    Active
+                  </span>
+                </div>
               </div>
             </div>
           ))}

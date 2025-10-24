@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Bell, AlertCircle, Clock } from "lucide-react";
 import { subscribeToAnnouncements } from "../../Service/FirebaseConfig";
-import { useAuth } from "../Store/useManageStore";
+import { useAuth } from "../Store/useManageStore.jsx";
 
 const Announcement = () => {
   const { userData } = useAuth();

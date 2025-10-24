@@ -1,3 +1,5 @@
+
+
 import React, { useState } from "react";
 import {
   Code,
@@ -16,7 +18,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { signUpStudent } from "../../Service/FirebaseConfig";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "../Store/useManageStore";
+import { db } from "../../Service/FirebaseConfig";
 
 const StudentSignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -164,7 +166,20 @@ const StudentSignUp = () => {
       }, 2000);
     } catch (error) {
       console.error("Signup error:", error);
-      setError(error.message || "Failed to create account. Please try again.");
+
+      if (error.message.includes("Invalid Team ID")) {
+        setError("Invalid Team ID. Please verify with your administrator.");
+      } else if (error.code === "auth/email-already-in-use") {
+        setError(
+          "This email is already registered. Please use a different email or sign in."
+        );
+      } else if (error.code === "auth/weak-password") {
+        setError("Password is too weak. Please use a stronger password.");
+      } else {
+        setError(
+          error.message || "Failed to create account. Please try again."
+        );
+      }
     } finally {
       setIsLoading(false);
     }
@@ -356,14 +371,14 @@ const StudentSignUp = () => {
                       name="teamId"
                       value={formData.teamId}
                       onChange={handleChange}
-                      className={`w-full bg-gray-900 text-white border rounded-lg pl-12 pr-4 py-3 outline-none transition-colors ${
+                      className={`w-full bg-gray-900 text-white border rounded-lg pl-12 pr-4 py-3 outline-none transition-colors uppercase ${
                         teamVerified === true
                           ? "border-green-500"
                           : teamVerified === false
                           ? "border-red-500"
                           : "border-gray-700 focus:border-yellow-500"
                       }`}
-                      placeholder="Enter Team ID (e.g., TEAM001)"
+                      placeholder="TEAM-XXXXXX"
                       required
                     />
                   </div>

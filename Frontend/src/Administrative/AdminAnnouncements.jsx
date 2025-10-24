@@ -14,7 +14,7 @@ import {
   deleteAnnouncement,
   updateAnnouncement,
 } from "../../Service/FirebaseConfig";
-import { useAuth } from "../Store/useManageStore";
+import { useAuth } from "../Store/useManageStore.jsx";
 
 const AdminAnnouncements = () => {
   const { userData } = useAuth();

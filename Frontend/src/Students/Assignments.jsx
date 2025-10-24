@@ -1,13 +1,48 @@
-// Frontend/src/Students/Assignments.jsx
-import React from "react";
+
+
+import React, { useState, useEffect } from "react";
 import { FileText, Calendar, User, Clock, AlertCircle } from "lucide-react";
-import useManageStore from "../Store/useManageStore";
+import { collection, query, where, onSnapshot, orderBy } from "firebase/firestore";
+import { db } from "../../Service/FirebaseConfig";
+import { useAuth } from "../Store/useManageStore";
 
 const Assignments = () => {
-  const currentUser = useManageStore((state) => state.currentUser);
-  const getAssignments = useManageStore((state) => state.getAssignments);
+  const { userData } = useAuth();
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const assignments = getAssignments();
+  useEffect(() => {
+    if (!userData?.teamId) {
+      setLoading(false);
+      return;
+    }
+
+    // Real-time listener for assignments
+    const assignmentsQuery = query(
+      collection(db, "assignments"),
+      where("teamId", "==", userData.teamId),
+      where("status", "==", "active"),
+      orderBy("createdAt", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      assignmentsQuery,
+      (snapshot) => {
+        const assignmentList = [];
+        snapshot.forEach((doc) => {
+          assignmentList.push({ id: doc.id, ...doc.data() });
+        });
+        setAssignments(assignmentList);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error loading assignments:", error);
+        setLoading(false);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [userData?.teamId]);
 
   const isOverdue = (dueDate) => {
     return new Date(dueDate) < new Date();
@@ -24,12 +59,31 @@ const Assignments = () => {
   const activeAssignments = assignments.filter((a) => !isOverdue(a.dueDate));
   const overdueAssignments = assignments.filter((a) => isOverdue(a.dueDate));
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="w-12 h-12 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-white text-3xl font-bold">Assignments</h1>
         <p className="text-gray-400 mt-1">View and manage your assignments</p>
+      </div>
+
+      {/* Real-time Indicator */}
+      <div className="bg-green-500 bg-opacity-10 border border-green-500 rounded-lg p-4 flex items-center space-x-3">
+        <div className="relative flex h-3 w-3">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+        </div>
+        <p className="text-green-500 text-sm font-medium">
+          Real-time updates enabled - New assignments appear automatically
+        </p>
       </div>
 
       {/* Stats */}
@@ -104,18 +158,14 @@ const Assignments = () => {
                       <p className="text-gray-400 mb-4 leading-relaxed">
                         {assignment.description}
                       </p>
-                      <div className="flex items-center space-x-4 text-sm">
-                        <div className="flex items-center space-x-2 text-gray-500">
-                          <User className="w-4 h-4" />
-                          <span>{assignment.adminName}</span>
-                        </div>
+                      <div className="flex items-center space-x-4 text-sm flex-wrap gap-2">
                         <div className="flex items-center space-x-2 text-gray-500">
                           <Calendar className="w-4 h-4" />
                           <span>
                             Assigned:{" "}
-                            {new Date(
-                              assignment.timestamp
-                            ).toLocaleDateString()}
+                            {assignment.createdAt?.toDate
+                              ? new Date(assignment.createdAt.toDate()).toLocaleDateString()
+                              : "Recently"}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 text-green-500">
@@ -171,16 +221,14 @@ const Assignments = () => {
                     <p className="text-gray-400 mb-4 leading-relaxed">
                       {assignment.description}
                     </p>
-                    <div className="flex items-center space-x-4 text-sm">
-                      <div className="flex items-center space-x-2 text-gray-500">
-                        <User className="w-4 h-4" />
-                        <span>{assignment.adminName}</span>
-                      </div>
+                    <div className="flex items-center space-x-4 text-sm flex-wrap gap-2">
                       <div className="flex items-center space-x-2 text-gray-500">
                         <Calendar className="w-4 h-4" />
                         <span>
                           Assigned:{" "}
-                          {new Date(assignment.timestamp).toLocaleDateString()}
+                          {assignment.createdAt?.toDate
+                            ? new Date(assignment.createdAt.toDate()).toLocaleDateString()
+                            : "Recently"}
                         </span>
                       </div>
                       <div className="flex items-center space-x-2 text-red-500">

@@ -1,4 +1,5 @@
-// components/administrator.jsx (updated with minor fixes for consistency)
+
+
 import React, { useState } from "react";
 import {
   Bell,
@@ -10,74 +11,33 @@ import {
   Users,
   BarChart3,
 } from "lucide-react";
-import useManageStore from "../Store/useManageStore";// Adjust path as needed
-// Import admin components (assuming they exist or will be created similarly)
+import { useAuth } from "../Store/useManageStore";
 import AdminAnnouncements from "./AdminAnnouncements";
 import AdminAssignments from "./AdminAssignments";
 import AdminAttendance from "./AdminAttendance";
 import AdminReports from "./AdminReports";
 import AdminUsers from "./AdminUsers";
-// Notification Modal Component (adapted for admin - shows all unread notifications)
+
+// Notification Modal Component
 const NotificationModal = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
-  const notifications = useManageStore
-    .getState()
-    .notifications.filter((n) => !n.read)
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  if (notifications.length === 0) {
-    return (
-      <div className="fixed right-4 top-20 w-80 bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-700">
-        <div className="p-4 border-b border-gray-600">
-          <h3 className="text-white font-semibold">Notifications</h3>
-        </div>
-        <div className="p-4 text-gray-400 text-center">
-          No new notifications
-        </div>
-        <button
-          onClick={onClose}
-          className="w-full p-2 hover:bg-gray-700 text-gray-300"
-        >
-          Close
-        </button>
-      </div>
-    );
-  }
+
   return (
-    <div className="fixed right-4 top-20 w-80 bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-700 max-h-96 overflow-y-auto">
+    <div className="fixed right-4 top-20 w-80 bg-gray-800 rounded-lg shadow-lg z-50 border border-gray-700">
       <div className="p-4 border-b border-gray-600 flex justify-between items-center">
-        <h3 className="text-white font-semibold">
-          Admin Notifications ({notifications.length})
-        </h3>
+        <h3 className="text-white font-semibold">Admin Notifications</h3>
         <button onClick={onClose} className="text-gray-400 hover:text-white">
           <X className="w-5 h-5" />
         </button>
       </div>
-      <div className="divide-y divide-gray-700">
-        {notifications.map((notif) => (
-          <div
-            key={notif.id}
-            className="p-4 hover:bg-gray-700 cursor-pointer"
-            onClick={() =>
-              useManageStore.getState().markNotificationAsRead(notif.id)
-            }
-          >
-            <div className="flex-1 min-w-0">
-              <p className="text-white font-medium truncate">
-                {notif.type || "New Admin Alert"}
-              </p>
-              <p className="text-gray-300 text-sm truncate">{notif.message}</p>
-              <p className="text-gray-500 text-xs mt-1">
-                {new Date(notif.timestamp).toLocaleString()}
-              </p>
-            </div>
-          </div>
-        ))}
+      <div className="p-4 text-gray-400 text-center">
+        No new notifications
       </div>
     </div>
   );
 };
 
-// Sidebar Component (admin menu)
+// Sidebar Component
 const Sidebar = ({
   activeTab,
   setActiveTab,
@@ -91,6 +51,7 @@ const Sidebar = ({
     { id: "users", icon: Users, label: "Manage Users" },
     { id: "reports", icon: BarChart3, label: "Reports" },
   ];
+
   return (
     <div
       className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-gray-900 transform ${
@@ -142,17 +103,15 @@ const Sidebar = ({
 };
 
 const Administrator = () => {
-  // Renamed to PascalCase for consistency
+  const { userData } = useAuth();
   const [activeTab, setActiveTab] = useState("announcements");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const markNotificationAsRead = useManageStore(
-    (state) => state.markNotificationAsRead
-  );
-  const { notifications } = useManageStore();
+
   const handleBellClick = () => {
     setIsNotificationOpen(!isNotificationOpen);
   };
+
   const renderContent = () => {
     switch (activeTab) {
       case "announcements":
@@ -169,6 +128,7 @@ const Administrator = () => {
         return <AdminAnnouncements />;
     }
   };
+
   return (
     <div className="flex h-screen bg-gray-900">
       {isMobileMenuOpen && (
@@ -193,13 +153,16 @@ const Administrator = () => {
               <Menu className="w-6 h-6" />
             </button>
             <div className="flex items-center space-x-4 ml-auto">
+              <div className="text-gray-400 text-sm">
+                Welcome, {userData?.fullName || "Admin"}
+              </div>
               <button
                 onClick={handleBellClick}
                 className="relative text-gray-400 hover:text-white"
               >
                 <Bell className="w-6 h-6" />
                 <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-4 w-4 flex items-center justify-center transform translate-x-1/2 -translate-y-1/2">
-                  {notifications.filter((n) => !n.read).length}
+                  0
                 </span>
               </button>
               <div className="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">

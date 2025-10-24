@@ -1,5 +1,7 @@
-// Frontend/src/Administrative/AdminAssignments.jsx
-import React, { useState } from "react";
+
+
+
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   Trash2,
@@ -9,16 +11,24 @@ import {
   Calendar,
   FileText,
   Clock,
+  X,
 } from "lucide-react";
-import useManageStore from "../Store/useManageStore";
+import { createAssignment } from "../../Service/FirebaseConfig";
+import { db } from "../../Service/FirebaseConfig";
+import { useAuth } from "../Store/useManageStore";
+import { 
+  collection, 
+  query, 
+  where, 
+  onSnapshot, 
+  deleteDoc, 
+  doc 
+} from "firebase/firestore";
 
 const AdminAssignments = () => {
-  const currentUser = useManageStore((state) => state.currentUser);
-  const getAssignments = useManageStore((state) => state.getAssignments);
-  const createAssignment = useManageStore((state) => state.createAssignment);
-  const deleteAssignment = useManageStore((state) => state.deleteAssignment);
-  const getTeamStudents = useManageStore((state) => state.getTeamStudents);
-
+  const { userData } = useAuth();
+  const [assignments, setAssignments] = useState([]);
+  const [students, setStudents] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -27,9 +37,57 @@ const AdminAssignments = () => {
   });
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const assignments = getAssignments();
-  const teamStudents = getTeamStudents();
+  // Real-time listener for assignments
+  useEffect(() => {
+    if (!userData?.teamId) return;
+
+    const assignmentsQuery = query(
+      collection(db, "assignments"),
+      where("teamId", "==", userData.teamId),
+      where("status", "==", "active")
+    );
+
+    const unsubscribe = onSnapshot(
+      assignmentsQuery,
+      (snapshot) => {
+        const assignmentList = [];
+        snapshot.forEach((doc) => {
+          assignmentList.push({ id: doc.id, ...doc.data() });
+        });
+        // Sort by creation date, newest first
+        assignmentList.sort((a, b) => {
+          const dateA = a.createdAt?.toDate?.() || new Date(0);
+          const dateB = b.createdAt?.toDate?.() || new Date(0);
+          return dateB - dateA;
+        });
+        setAssignments(assignmentList);
+      },
+      (error) => {
+        console.error("Error loading assignments:", error);
+      }
+    );
+
+    return () => unsubscribe();
+  }, [userData?.teamId]);
+
+  // Real-time listener for students count
+  useEffect(() => {
+    if (!userData?.teamId) return;
+
+    const studentsQuery = query(
+      collection(db, "users"),
+      where("teamId", "==", userData.teamId),
+      where("role", "==", "student")
+    );
+
+    const unsubscribe = onSnapshot(studentsQuery, (snapshot) => {
+      setStudents(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+    });
+
+    return () => unsubscribe();
+  }, [userData?.teamId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -40,7 +98,7 @@ const AdminAssignments = () => {
     setError("");
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -50,29 +108,53 @@ const AdminAssignments = () => {
       return;
     }
 
-    const result = createAssignment(
-      formData.title,
-      formData.description,
-      formData.dueDate
-    );
+    // Validate due date is not in the past
+    const selectedDate = new Date(formData.dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      setError("Due date cannot be in the past");
+      return;
+    }
 
-    if (result.success) {
+    setIsSubmitting(true);
+
+    try {
+      await createAssignment({
+        title: formData.title,
+        description: formData.description,
+        dueDate: formData.dueDate,
+      });
+
       setSuccess("Assignment created and sent to all students!");
       setFormData({ title: "", description: "", dueDate: "" });
-      setShowCreateModal(false);
-      setTimeout(() => setSuccess(""), 3000);
-    } else {
-      setError(result.error);
+      
+      setTimeout(() => {
+        setShowCreateModal(false);
+        setSuccess("");
+      }, 2000);
+    } catch (error) {
+      console.error("Error creating assignment:", error);
+      setError(error.message || "Failed to create assignment");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleDelete = (assignmentId) => {
-    if (window.confirm("Are you sure you want to delete this assignment?")) {
-      const result = deleteAssignment(assignmentId);
-      if (result.success) {
-        setSuccess("Assignment deleted successfully");
-        setTimeout(() => setSuccess(""), 3000);
-      }
+  const handleDelete = async (assignmentId) => {
+    if (!window.confirm("Are you sure you want to delete this assignment?")) {
+      return;
+    }
+
+    try {
+      await deleteDoc(doc(db, "assignments", assignmentId));
+      setSuccess("Assignment deleted successfully");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (error) {
+      console.error("Error deleting assignment:", error);
+      setError("Failed to delete assignment");
+      setTimeout(() => setError(""), 3000);
     }
   };
 
@@ -102,6 +184,17 @@ const AdminAssignments = () => {
           <Plus className="w-5 h-5" />
           <span>New Assignment</span>
         </button>
+      </div>
+
+      {/* Real-time Indicator */}
+      <div className="bg-green-500 bg-opacity-10 border border-green-500 rounded-lg p-4 flex items-center space-x-3">
+        <div className="relative flex h-3 w-3">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+        </div>
+        <p className="text-green-500 text-sm font-medium">
+          Real-time updates enabled - Assignments sync automatically
+        </p>
       </div>
 
       {/* Stats */}
@@ -135,7 +228,7 @@ const AdminAssignments = () => {
             <div>
               <p className="text-gray-400 text-sm">Team Students</p>
               <p className="text-white text-3xl font-bold mt-1">
-                {teamStudents.length}
+                {students.length}
               </p>
             </div>
             <Users className="w-12 h-12 text-blue-500 opacity-20" />
@@ -151,7 +244,7 @@ const AdminAssignments = () => {
         </div>
       )}
 
-      {error && (
+      {error && !showCreateModal && (
         <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4 flex items-center space-x-3">
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
           <p className="text-white text-sm">{error}</p>
@@ -171,6 +264,13 @@ const AdminAssignments = () => {
             <p className="text-gray-500 text-sm mt-2">
               Create your first assignment for your students
             </p>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="mt-4 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold px-6 py-3 rounded-lg inline-flex items-center space-x-2 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Create Assignment</span>
+            </button>
           </div>
         ) : (
           <div className="divide-y divide-gray-700">
@@ -200,14 +300,16 @@ const AdminAssignments = () => {
                       <p className="text-gray-400 mb-3">
                         {assignment.description}
                       </p>
-                      <div className="flex items-center space-x-4 text-sm">
+                      <div className="flex items-center space-x-4 text-sm flex-wrap gap-2">
                         <div className="flex items-center space-x-2 text-gray-500">
                           <Calendar className="w-4 h-4" />
                           <span>
                             Created:{" "}
-                            {new Date(
-                              assignment.timestamp
-                            ).toLocaleDateString()}
+                            {assignment.createdAt?.toDate
+                              ? new Date(
+                                  assignment.createdAt.toDate()
+                                ).toLocaleDateString()
+                              : "Recently"}
                           </span>
                         </div>
                         <div className="flex items-center space-x-2 text-gray-500">
@@ -219,13 +321,14 @@ const AdminAssignments = () => {
                         </div>
                         <div className="flex items-center space-x-2 text-gray-500">
                           <Users className="w-4 h-4" />
-                          <span>Sent to {teamStudents.length} students</span>
+                          <span>Sent to {students.length} students</span>
                         </div>
                       </div>
                     </div>
                     <button
                       onClick={() => handleDelete(assignment.id)}
                       className="ml-4 text-red-500 hover:text-red-400 p-2 hover:bg-red-500 hover:bg-opacity-10 rounded-lg transition-colors"
+                      title="Delete assignment"
                     >
                       <Trash2 className="w-5 h-5" />
                     </button>
@@ -240,15 +343,27 @@ const AdminAssignments = () => {
       {/* Create Assignment Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-2xl">
-            <div className="p-6 border-b border-gray-700">
-              <h2 className="text-white text-2xl font-bold">
-                Create New Assignment
-              </h2>
-              <p className="text-gray-400 mt-1">
-                This will be sent to all {teamStudents.length} students in your
-                team
-              </p>
+          <div className="bg-gray-800 rounded-lg border border-gray-700 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-700 flex items-center justify-between">
+              <div>
+                <h2 className="text-white text-2xl font-bold">
+                  Create New Assignment
+                </h2>
+                <p className="text-gray-400 mt-1">
+                  This will be sent to all {students.length} students in your
+                  team
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setFormData({ title: "", description: "", dueDate: "" });
+                  setError("");
+                }}
+                className="text-gray-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
@@ -256,6 +371,13 @@ const AdminAssignments = () => {
                 <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4 flex items-center space-x-3">
                   <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
                   <p className="text-white text-sm">{error}</p>
+                </div>
+              )}
+
+              {success && (
+                <div className="bg-green-500 bg-opacity-10 border border-green-500 rounded-lg p-4 flex items-center space-x-3">
+                  <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                  <p className="text-white text-sm">{success}</p>
                 </div>
               )}
 
@@ -304,6 +426,13 @@ const AdminAssignments = () => {
                 />
               </div>
 
+              <div className="bg-blue-500 bg-opacity-10 border border-blue-500 rounded-lg p-4">
+                <p className="text-blue-500 text-sm">
+                  <strong>Note:</strong> This assignment will be visible to all
+                  students in your team immediately after creation.
+                </p>
+              </div>
+
               <div className="flex space-x-4">
                 <button
                   type="button"
@@ -318,9 +447,12 @@ const AdminAssignments = () => {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 rounded-lg transition-colors"
+                  disabled={isSubmitting}
+                  className={`flex-1 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-bold py-3 rounded-lg transition-colors ${
+                    isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                  }`}
                 >
-                  Create & Send
+                  {isSubmitting ? "Creating..." : "Create & Send"}
                 </button>
               </div>
             </form>
