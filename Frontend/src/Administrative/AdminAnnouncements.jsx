@@ -446,14 +446,14 @@ const AdminAnnouncements = () => {
                     setFormData({ title: "", content: "", priority: "medium" });
                   }}
                   disabled={isSubmitting}
-                  className="bg-gray-700 hover:bg-gray-600 text-white py-2 sm:py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-gray-700 hover:bg-gray-600 text-white py-2 sm:py-3 px-4 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`bg-yellow-500  hover:bg-yellow-600 text-gray-900 py-2 sm:py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${
+                  className={`bg-yellow-500  hover:bg-yellow-600 text-gray-900 py-2 px-4 sm:py-3 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2 ${
                     isSubmitting ? "opacity-70 cursor-not-allowed" : ""
                   }`}
                 >
